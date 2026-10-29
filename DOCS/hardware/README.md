@@ -1,5 +1,7 @@
 # Hardware
 
+Los [UID del tablero](uids_tablero.md) están documentados por fila, columna y casilla.
+
 Aquí irán los esquemas, cuando el cableado esté probado. Hasta entonces los pines del código están en `-1`, dentro de `firmware/*/include/config.h`.
 
 La pantalla gráfica del kit va por el puerto serie y el conversor de nivel, no por I2C.
