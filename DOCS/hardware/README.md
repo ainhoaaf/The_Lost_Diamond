@@ -1,6 +1,8 @@
 # Hardware
 
-Aquí irán los esquemas, cuando el cableado esté probado. Hasta entonces no hay números de pin en el código: se rellenan en los sketches.
+Aquí irán los esquemas, cuando el cableado esté probado. Hasta entonces los pines del código están en `-1`, dentro de `firmware/*/include/config.h`.
+
+La pantalla gráfica del kit va por el puerto serie y el conversor de nivel, no por I2C.
 
 ## Meeple (uno por jugador, cuatro en total)
 
@@ -18,7 +20,7 @@ El ESP-01 se programa con su módulo programador. Hay que quitar la alimentació
 - Botón
 - Zumbador pasivo
 - LED
-- FreeRTOS: una tarea para MQTT, otra para el botón, otra para el zumbador y otra para la pantalla
+- FreeRTOS: MQTT, botón, lógica, zumbador, LED y pantalla. El callback solo encola.
 
 El zumbador no puede usar esperas que congelen el botón ni MQTT. El tic del diamante vive en su propia tarea.
 

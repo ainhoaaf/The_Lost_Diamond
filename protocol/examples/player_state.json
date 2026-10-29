@@ -1,0 +1,10 @@
+{
+  "id": "Player_1",
+  "home": "A1",
+  "movements": 3,
+  "turn": 1,
+  "cell": "M2",
+  "has_diamond": false,
+  "has_horseshoe": false,
+  "skip": false
+}

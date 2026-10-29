@@ -8,25 +8,24 @@ Las primeras partidas se juegan con gemelos en Python. Cuando una partida entera
 
 | Carpeta | Qué hay |
 |---|---|
-| `docs/` | Reglamento, tablero, topics MQTT y, más adelante, esquemas eléctricos. |
+| `docs/` | Reglamento, tablero, topics MQTT y esquemas. El enunciado de la asignatura está en `docs/enunciado/` y los documentos del grupo en `docs/nuestro juego/`. |
 | `protocol/examples/` | Un JSON de ejemplo por cada mensaje. |
 | `server/` | Motor de la partida y el programa que habla con el broker. |
 | `twins/` | Meeples y estación simulados. Publican los mismos mensajes que las placas. |
-| `firmware/meeple/` | Sketch de Arduino del ESP-01 (NFC y LED). |
-| `firmware/station/` | Sketch de Arduino del ESP32 (pantalla, botón, zumbador, FreeRTOS). |
+| `firmware/meeple/` | Proyecto PlatformIO del ESP-01 (NFC y LED). |
+| `firmware/station/` | Proyecto PlatformIO del ESP32 (pantalla, botón, zumbador, FreeRTOS). |
 | `broker/` | Configuración de Mosquitto para la red local. |
-| `DOCS/` | Enunciado de la asignatura y los documentos del grupo. No es código. |
 
 ## Orden de trabajo
 
 1. Cerrar el texto de `docs/` si cambia alguna regla.
 2. Implementar `server/lost_diamond/engine/` y sus pruebas, sin red.
 3. Conectar el adaptador MQTT y jugar una partida con `twins/`.
-4. Abrir los sketches de `firmware/` y hacer que publiquen los JSON de `protocol/examples/`.
+4. Compilar `firmware/` con PlatformIO y hacer que publique los JSON de `protocol/examples/`.
 
-## Arduino
+## Placas
 
-Cada sketch se abre solo, con el Arduino IDE. La placa y las librerías están en el `README.md` de cada carpeta.
+Los dos programas se abren con VS Code y la extensión PlatformIO. La placa, la IP y las librerías están en el `README.md` de cada carpeta. El framework es Arduino, que en el ESP32 ya incluye FreeRTOS.
 
 ## Servidor
 

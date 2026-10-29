@@ -20,7 +20,7 @@ def main() -> None:
     args = parser.parse_args()
     print(f"Meeple gemelo {args.mac}")
     print(f"Broker: {args.broker}")
-    print("Pendiente: publicar lobby/join y players/{id}/position.")
+    print("Pendiente: publicar lobby/join y Players/Player_N/move.")
 
 
 if __name__ == "__main__":

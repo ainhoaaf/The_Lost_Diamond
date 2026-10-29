@@ -1,17 +1,11 @@
 # Estación
 
-Sketch: `station.ino`
+Proyecto PlatformIO del ESP32 (`esp32dev`). El código está en `src/main.cpp`.
 
-1. Herramientas → Placa → ESP32 Dev Module.
-2. Librería: PubSubClient.
-3. Edita `config.h` con la misma red y la misma IP del broker que los meeples.
-4. Cable USB propio: el ESP32 no trae el cable en el kit.
+`taskMqtt` es la única que usa el cliente MQTT. El callback copia el mensaje y lo deja en una cola. `taskLogic` lo interpreta. `taskDisplay`, `taskLed` y `taskBuzzer` leen el resultado. `taskButton` avisa por otra cola, y `taskMqtt` publica `lostdiamond/Station/button`.
 
-La pantalla del kit es serie (TX/RX) y pasa por el conversor de nivel. El zumbador es pasivo. Los pines se dejan en `-1` hasta tener el esquema.
+`Serial.begin` se llama antes de crear las tareas. Lo que se escriba por el USB toma `serialMutex`. La pantalla del kit va por otro UART, con el conversor de nivel.
 
-FreeRTOS reparte el trabajo para que el tic del diamante no congele el botón ni MQTT:
-
-- `taskMqtt` es la única que toca el cliente MQTT.
-- `taskButton` solo marca que han pulsado.
-- `taskBuzzer` hace sonar el patrón que manda el PC.
-- `loop` pinta la pantalla.
+1. Cambia en `include/config.h` la misma red y la IP del broker que usan los meeples.
+2. La IP de la estación es `192.168.1.20`.
+3. Los pines siguen en `-1` hasta tener el esquema.

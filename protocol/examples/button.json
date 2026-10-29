@@ -1,3 +1,7 @@
 {
+  "event_id": "9",
+  "player_id": "",
+  "timestamp": 1710000009,
+  "action": "button",
   "pressed": true
 }

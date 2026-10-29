@@ -1,5 +1,8 @@
 {
-  "player_id": "1",
+  "event_id": "2",
+  "player_id": "Player_1",
+  "timestamp": 1710000001,
+  "action": "assign",
   "home": "A1",
   "token": "abc123"
 }

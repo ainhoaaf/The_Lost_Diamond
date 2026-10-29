@@ -2,11 +2,12 @@
 
 Cuando esté hecho, el flujo de un turno será:
 
-1. La estación publica en `station/button`.
-2. El PC tira el dado y publica `game/dice` y `station/display`.
-3. El meeple activo publica `players/{id}/position`.
-4. El PC responde en `players/{id}/move_result`.
-5. Si la casilla es válida, publica el evento y pasa el turno.
+1. El meeple publica su MAC en `lobby/join` y queda como Player_N.
+2. La estación publica en `Station/button`.
+3. El PC tira el dado, actualiza `Game_status` y `Station/display`.
+4. El meeple activo publica `Players/Player_N/move` con un event_id.
+5. El PC responde en `Players/Player_N/result` con el mismo event_id.
+6. Si la casilla es válida, actualiza `Game_status` y el estado de ese jugador.
 """
 
 from __future__ import annotations

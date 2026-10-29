@@ -1,0 +1,8 @@
+{
+  "num_players": 4,
+  "current_player": "Player_2",
+  "diamond_found": false,
+  "carrier": null,
+  "phase": "playing",
+  "movements": 3
+}

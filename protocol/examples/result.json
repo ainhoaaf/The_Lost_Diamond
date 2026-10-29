@@ -1,0 +1,9 @@
+{
+  "event_id": "4",
+  "player_id": "Player_1",
+  "timestamp": 1710000005,
+  "action": "move_result",
+  "ok": false,
+  "reason": "destino_ilegal",
+  "cell": "A2"
+}

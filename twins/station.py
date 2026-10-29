@@ -19,7 +19,7 @@ def main() -> None:
     args = parser.parse_args()
     print("Estación gemela")
     print(f"Broker: {args.broker}")
-    print("Pendiente: publicar station/button y pintar station/display.")
+    print("Pendiente: publicar Station/button y pintar Station/display.")
 
 
 if __name__ == "__main__":
