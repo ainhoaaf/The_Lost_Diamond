@@ -1,5 +1,7 @@
 # Hardware
 
+Los [UID del tablero](uids_tablero.md) están documentados por fila, columna y casilla.
+
 Aquí irán los esquemas, cuando el cableado esté probado. Hasta entonces no hay números de pin en el código: se rellenan en los sketches.
 
 ## Meeple (uno por jugador, cuatro en total)
