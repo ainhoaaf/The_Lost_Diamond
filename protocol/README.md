@@ -17,4 +17,6 @@ Cada archivo es el cuerpo JSON de un topic de `docs/mqtt.md`.
 
 En `move.json` el campo `cell` lo rellena el gemelo. La placa rellena `uid` y deja `cell` vacío: el PC traduce el UID con `server/lost_diamond/nfc_map.example.json`.
 
+`Game_status` lleva `current_mac` (el meeple compara esa MAC con la suya), `remaining` y, al revelar, `token`.
+
 `buzzer.json` usa uno de estos patrones: `dice`, `diamond`, `tick`, `horseshoe`, `silence`.

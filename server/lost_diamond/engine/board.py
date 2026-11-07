@@ -1,46 +1,51 @@
-"""Mapa fijo. Los costes y las vecinas están explicados en docs/board.md."""
+"""Mapa fijo.
+
+Nombres de casilla, vecinas de la misma isla y puentes. El motor llama a
+`step_cost` para saber cuántos pasos gasta un salto. Este archivo no decide
+turnos, fichas ni victoria.
+"""
 
 from __future__ import annotations
 
-HOMES = ("A1", "B4")
+HOMES = ("A1", "C4")
 
 ISLANDS = {
     "A": ("A1", "A2", "A3", "A4", "A5"),
-    "M": ("M1", "M2", "M3"),
-    "S": ("S1", "S2"),
-    "T": ("T1", "T2"),
-    "B": ("B1", "B2", "B3", "B4"),
+    "B": ("B1", "B2", "B3"),
+    "E": ("E1", "E2"),
+    "D": ("D1", "D2"),
+    "C": ("C1", "C2", "C3", "C4"),
 }
 
-# Paso de coste 1. Sin diagonales.
+# Paso de coste 1. Sin diagonales. B1 no toca a B2.
 ISLAND_LINKS = (
     ("A1", "A2"),
     ("A2", "A3"),
     ("A1", "A4"),
     ("A2", "A5"),
     ("A4", "A5"),
-    ("M1", "M3"),
-    ("M2", "M3"),
-    ("S1", "S2"),
-    ("T1", "T2"),
-    ("B1", "B2"),
     ("B1", "B3"),
-    ("B2", "B4"),
-    ("B3", "B4"),
+    ("B2", "B3"),
+    ("E1", "E2"),
+    ("D1", "D2"),
+    ("C1", "C2"),
+    ("C1", "C3"),
+    ("C2", "C4"),
+    ("C3", "C4"),
 )
 
 # (origen, destino, coste). El puente vale en los dos sentidos.
 BRIDGES = (
-    ("A3", "M1", 2),
-    ("A5", "M2", 2),
-    ("M2", "B1", 2),
-    ("M3", "B2", 2),
-    ("A4", "S1", 3),
-    ("A5", "T1", 3),
-    ("T1", "B1", 3),
-    ("T2", "B3", 3),
-    ("S1", "T1", 1),
-    ("S2", "T2", 1),
+    ("A3", "B1", 2),
+    ("A5", "B2", 2),
+    ("B2", "C1", 2),
+    ("B3", "C2", 2),
+    ("A4", "E1", 3),
+    ("A5", "D1", 3),
+    ("D1", "C1", 3),
+    ("D2", "C3", 3),
+    ("E1", "D1", 1),
+    ("E2", "D2", 1),
 )
 
 
@@ -65,3 +70,16 @@ def bridges_from() -> dict[str, set[tuple[str, int]]]:
         links[left].add((right, cost))
         links[right].add((left, cost))
     return links
+
+
+def hops_from(cell: str) -> dict[str, int]:
+    """Casillas a un salto y el coste de cada una."""
+    hops = {neighbor: 1 for neighbor in island_neighbors()[cell]}
+    for dest, cost in bridges_from()[cell]:
+        hops[dest] = cost
+    return hops
+
+
+def step_cost(origin: str, dest: str) -> int | None:
+    """Coste de un salto. None si origin y dest no son adyacentes."""
+    return hops_from(origin).get(dest)

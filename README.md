@@ -18,10 +18,10 @@ Las primeras partidas se juegan con gemelos en Python. Cuando una partida entera
 
 ## Orden de trabajo
 
-1. Cerrar el texto de `docs/` si cambia alguna regla.
-2. Implementar `server/lost_diamond/engine/` y sus pruebas, sin red.
-3. Conectar el adaptador MQTT y jugar una partida con `twins/`.
-4. Compilar `firmware/` con PlatformIO y hacer que publique los JSON de `protocol/examples/`.
+1. Implementar `server/lost_diamond/engine/game.py` y `tests/test_game.py`, sin red.
+2. Implementar `mqtt_adapter/adapter.py` y `tests/test_turn.py`.
+3. Jugar una partida con `twins/` contra Mosquitto.
+4. Sustituir un gemelo por una placa, con el mapa NFC que ya está en `nfc_map.example.json`.
 
 ## Placas
 
@@ -31,8 +31,8 @@ Los dos programas se abren con VS Code y la extensión PlatformIO. La placa, la 
 
 ```bash
 cd server
-python3 -m unittest tests.test_board
+python3 -m unittest tests.test_board tests.test_nfc tests.test_turn tests.test_game
 python3 -m lost_diamond.main
 ```
 
-El motor de la partida todavía no juega: la estructura y el mapa ya están. El mapa se comprueba con el test de arriba.
+El mapa, los UID y los JSON del turno ya se comprueban. El motor de la partida todavía no juega: `Game` está escrito como contrato en `server/lost_diamond/engine/game.py`. Cómo partir el trabajo en dos está en `server/README.md`.

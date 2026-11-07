@@ -1,37 +1,31 @@
 # Tablero
 
-Dieciséis casillas. El paso entre vecinas de la misma isla cuesta 1. Un puente se toma entero, con el coste de la tabla.
+Dieciséis casillas. El paso entre vecinas de la misma isla cuesta 1. Un puente se toma entero, con el coste de la tabla, y se puede pagar a mitad de camino si quedan pasos suficientes.
 
 ```text
-A1 —— A2 —— A3          M1
+A1 —— A2 —— A3          B1
 |      |                |
-A4 —— A5           M2 —— M3
+A4 —— A5           B2 —— B3
 
-S1      T1          B1 —— B2
+E1      D1          C1 —— C2
 |       |           |      |
-S2      T2          B3 —— B4
+E2      D2          C3 —— C4
 ```
 
-A1 y B4 son las casas. No entran en el sorteo.
+A1 y C4 son las casas. No entran en el sorteo.
 
-No hay diagonal. A3 solo toca a A2. M1 no toca a M2: se pasa por M3.
+No hay diagonal. A3 solo toca a A2. B1 no toca a B2: se pasa por B3.
 
 ## Puentes
 
 | Puente | Coste |
 |---|---|
-| A3–M1, A5–M2, M2–B1, M3–B2 | 2 |
-| A4–S1, A5–T1, T1–B1, T2–B3 | 3 |
-| S1–T1, S2–T2 | 1 |
+| A3–B1, A5–B2, B2–C1, B3–C2 | 2 |
+| A4–E1, A5–D1, D1–C1, D2–C3 | 3 |
+| E1–D1, E2–D2 | 1 |
 
-Las dos islas grandes no se tocan. La mediana no toca a las pequeñas.
+Las dos islas grandes no se tocan. La mediana no toca a las pequeñas. Entrar desde A a E o a D cuesta 3.
 
-## Consecuencias del dado
-
-En las islas pequeñas, un 2 no tiene destino: el único paso es el vecino, no se puede volver al origen y ningún puente cuesta 2.
-
-En M3, un 3 no tiene destino: sus puentes cuestan 2 y, sin pisar otra vez M3, no hay un paseo de tres pasos.
-
-En M1, un 3 puede ser M3 → M2 → M3. En M2, un 3 puede ser M3 → M1 → M3.
+Los UID de cada casilla están en `docs/hardware/uids_tablero.md`. El programa los lee en `server/lost_diamond/nfc_map.example.json`.
 
 Estos datos están repetidos en `server/lost_diamond/engine/board.py`. Si se cambia un puente, se cambia en los dos sitios.

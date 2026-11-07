@@ -3,7 +3,14 @@
 El Enter hace de botón. La terminal hace de pantalla y de zumbador.
 Los mensajes son los de firmware/station.
 
-Uso previsto, cuando el adaptador esté conectado:
+Cuando esté hecho:
+
+- Publica `Station/button` al pulsar Enter.
+- Pinta `Station/display` (line1, line2, diamond).
+- Escribe el patrón de `Station/buzzer`.
+- No tira el dado: el número lo publica el PC.
+
+Uso:
 
     python3 station.py --broker 127.0.0.1
 """

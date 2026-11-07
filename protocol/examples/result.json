@@ -5,5 +5,6 @@
   "action": "move_result",
   "ok": false,
   "reason": "destino_ilegal",
-  "cell": "A2"
+  "cell": "A2",
+  "remaining": 3
 }
