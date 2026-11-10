@@ -44,6 +44,38 @@ real están escritas y en `skip` hasta que alguien las implemente.
 La frontera es `Game`. A no importa MQTT. B no decide fichas, turnos ni
 victoria: llama a `roll` y a `step` y publica el `StepOutcome`.
 
+## Decisiones cerradas
+
+Ya están decididas. Si alguien quiere cambiar una, lo habla con la otra.
+
+- **Red.** Mosquitto corre en el portátil de B, y el controlador (el
+  programa Python de `server/`, con `Game` y `adapter.py`) corre en ese mismo
+  portátil. En desarrollo todo va por `127.0.0.1`. En la demo, el WiFi es el
+  hotspot del iPhone en 2,4 GHz. Las placas usan DHCP. Lo único que cambia en
+  cada sesión es `MQTT_HOST`: la IP del portátil dentro del hotspot. Hacen
+  falta 6 dispositivos conectados (portátil, estación y 4 meeples) y hay que
+  comprobar cuántos admite el iPhone.
+- **Siempre 4 jugadores.** El controlador asigna `Player_N` por orden de
+  `join`. Los asientos son: `Player_1`→A1, `Player_2`→C4, `Player_3`→A1,
+  `Player_4`→C4. B se los pasa a `new_game(seats)`. La partida empieza al
+  4.º `join`. Un `join` repetido con la misma MAC no es un jugador nuevo.
+- **Retenidos.** Al arrancar, el controlador borra los mensajes retenidos de
+  la partida anterior.
+- **Gemelos.** Un lanzador levanta los cuatro meeples y la estación. Cada
+  gemelo también se puede lanzar suelto para depurar. El gemelo de meeple
+  se mueve tecleando casilla (`B2`) o UID. La estación gemela es la terminal:
+  Enter es el botón.
+- **UID.** Hex de 7 bytes en mayúsculas. `nfc.py` acepta con o sin espacios.
+- **LED verde.** El PC publica `current_mac` en `Game_status` y `turn` en
+  `Players/Player_N`. El firmware decide cuál lee. Hoy lee `turn`.
+- **`token` de `assign`.** Se sigue entregando (el enunciado pide un token
+  al hacer join). De momento nadie lo comprueba en `move`.
+- **Aviso de 15 s.** Va por sonido, en `Station/buzzer`. B propone el nombre
+  del patrón (`hurry`) y se acuerda con la parte física.
+- **Pendiente de la parte física, no bloquea:** confirmaciones de la base,
+  lista final de patrones de zumbador, reenvío de `move`, identidad de la
+  estación y fecha de la primera placa contra el broker.
+
 ## Persona A — reglas
 
 Archivos suyos: `lost_diamond/engine/game.py` y `tests/test_game.py`.
@@ -56,9 +88,12 @@ Tiene que hacer, en este orden:
    casa de arriba y casa de abajo. Puede empezar cualquiera de las dos.
    Estar en casa al empezar no es ganar. En A1 y C4 pueden coincidir varios.
    En el resto, solo uno: no se pasa ni se para si hay alguien.
-2. `current_player()`, `roll()`, `remaining()`. El dado es 1, 2 o 3 y queda
-   guardado como presupuesto de pasos. Si ese jugador tiene `skip` por un
-   naufragio, no tira y el turno pasa al siguiente.
+2. `current_player()`, `roll()`, `remaining()`. `roll()` tira siempre para
+   quien tiene el turno: 1, 2 o 3, que queda guardado como presupuesto de
+   pasos. Nunca devuelve 0. Si con esa tirada no existe ninguna casilla
+   legal (por ejemplo, todas ocupadas), `blocked=True` y el turno pasa solo.
+   Los jugadores con naufragio pendiente se saltan solos al pasar el turno,
+   sin pulsar el botón, y quedan en `skipped`.
 3. `legal_next()` y `step(casilla)`. Un salto a una vecina de la misma isla
    cuesta 1. Un puente se puede tomar a mitad de camino si quedan al menos
    tantos pasos como su coste (2 o 3, o 1 entre E y D). No se vuelve a la
@@ -82,14 +117,16 @@ Tiene que hacer, en este orden:
 5. Victoria. `won=True` y `winner()` devuelve ese `Player_N` si acaba el
    movimiento en A1 o C4 con el diamante, o con herradura válida antes que
    el portador. Quien ya no puede ganar sigue en la partida y puede bloquear.
+6. `status()` y `player_state(player_id)`. Son solo lectura. B los llama
+   después de cada cambio para publicar `Game_status` y
+   `Players/Player_N`. Los campos están en la sección Contrato.
 
 Cómo se sabe que A ha terminado: en `test_game.py` se quitan los `skip` uno
 a uno y todos pasan. No hace falta Mosquitto ni las placas.
 
-Para probar sin azar, A tiene que poder fijar el sorteo y las tiradas en los
-tests (si no, no se puede comprobar un pirata o un diamante a propósito).
-Si para eso añade un argumento opcional a `new_game` o a `roll`, **se lo
-dice a B** porque B llama a esas funciones.
+Para probar sin azar, las firmas ya están decididas (ver Contrato):
+`Game(rng=...)`, `new_game(seats, tokens=..., first_player=...)` y
+`roll(forced=...)`. En producción B las llama sin esos argumentos.
 
 ## Persona B — broker y gemelos
 
@@ -105,15 +142,20 @@ el de verdad. **Ese cambio se habla el mismo día.**
 
 Tiene que hacer, en este orden:
 
-1. `lobby/join` con la MAC → asignar `Player_1` … `Player_4` y publicar
-   `lobby/assign/{mac}`. La misma MAC recupera al mismo jugador. Guardar
-   MAC ↔ `Player_N`. Publicar `Game_status` con `current_player` y
-   `current_mac`. El meeple compara esa MAC con la suya y enciende el verde.
+1. `lobby/join` con la MAC → asignar `Player_1` … `Player_4` por orden de
+   llegada y publicar `lobby/assign/{mac}`. La misma MAC recupera al mismo
+   jugador. Guardar MAC ↔ `Player_N`. Al 4.º `join`, llamar a
+   `Game.new_game(seats)` con `Player_1`→A1, `Player_2`→C4, `Player_3`→A1,
+   `Player_4`→C4. Publicar `Game_status` con `current_player` y
+   `current_mac`, y `Players/Player_N` de cada jugador. El meeple compara
+   esa MAC con la suya y enciende el verde.
    Si el WiFi se corta, el Last Will llega a `lobby/status/{mac}`. Al volver,
    el mismo `Player_N`. No se reparte otro.
 2. `Station/button` → `Game.roll()`. Publicar el número en `Game_status`
    (`movements` y `remaining`) y en `Station/display`. El dado lo tira el
-   PC, no la estación.
+   PC, no la estación. Si el resultado trae `blocked=True`, publicar que ese
+   jugador pierde el turno y quién juega ahora (`next_player`). Cada
+   jugador de `skipped` pierde el turno por naufragio y se anuncia igual.
 3. `Players/Player_N/move` → traducir el UID con `nfc.cell_for` (el gemelo
    puede traer ya `cell`). Llamar a `Game.step`. Responder en `result` con
    el **mismo** `event_id`. Un UID repetido no llama otra vez a `step`. Un
@@ -126,12 +168,20 @@ Tiene que hacer, en este orden:
    texto / zumbador en `Station/display` y `Station/buzzer`). Si
    `extra_roll` es verdadero, llamar otra vez a `Game.roll()` **sin esperar
    al botón**. Si `won` es verdadero, cerrar la partida (`phase` de fin).
+   Cuando el turno acaba, `next_player` dice quién sigue y `skipped` quién
+   se ha saltado por naufragio. Después de cada `step` y de cada `roll`,
+   releer `status()` y `player_state()` y publicar `Game_status` y
+   `Players/Player_N`.
 6. Gemelos. `station.py`: Enter publica el botón; la terminal pinta
    `display` y el patrón de `buzzer`. `meeple.py`: join con `--mac`, lee
    `current_mac`, publica un UID solo cuando cambia, espera `result` con el
    mismo `event_id`.
 7. `main.py`: crea un `Game`, lo pasa al adaptador y se queda escuchando
-   Mosquitto (`127.0.0.1` en local).
+   Mosquitto (`127.0.0.1` en local). Al arrancar, borra los retenidos de la
+   partida anterior (publica un payload vacío retenido en `Game_status`,
+   `Players/Player_N` y `lobby/status/{mac}`). El broker y los gemelos
+   (un lanzador para los cuatro meeples y la estación, más cada uno suelto)
+   también son de B.
 
 Cómo se sabe que B ha terminado su parte a solas: en `test_turn.py` se
 quitan los `skip` y pasan **sin Mosquitto**, con un cliente MQTT falso.
@@ -148,14 +198,30 @@ dibujo y la música a partir de ese código.
 hablarlo.
 
 ```text
-new_game(seats)           seats: Player_N → "A1" o "C4"
+Game(rng=None)                       rng: random.Random, para sorteo y dado reproducibles
+new_game(seats, *, tokens=None, first_player=None)
+                                     seats: Player_N → "A1" o "C4"
+                                     tokens: casilla → ficha, fija el sorteo (solo tests)
+                                     first_player: fija quién empieza (solo tests)
 current_player() -> str
-roll() -> int             1, 2 o 3. También deja remaining.
+roll(*, forced=None) -> RollOutcome  forced: 1, 2 o 3 (solo tests)
 remaining() -> int
 legal_next() -> list[str]
 step(cell) -> StepOutcome
 winner() -> str | None
+status() -> StatusView               para publicar Game_status
+player_state(player_id) -> PlayerView   para publicar Players/Player_N
 ```
+
+`RollOutcome` (resultado de `roll()`):
+
+| Campo | Tipo | Qué significa |
+|---|---|---|
+| `player` | str | Jugador al que se le ha tirado el dado. |
+| `value` | int | 1, 2 o 3. Nunca 0. |
+| `blocked` | bool | No hay ninguna casilla legal con esa tirada. El turno ya se ha pasado. |
+| `next_player` | str | A quién le toca ahora. Es `player` salvo que `blocked` sea verdadero. |
+| `skipped` | list[str] | Jugadores saltados por naufragio al pasar el turno. Vacía si no hubo paso. |
 
 `StepOutcome`:
 
@@ -168,6 +234,35 @@ winner() -> str | None
 | `token` | str o None | Código de ficha solo cuando `remaining` llega a 0. |
 | `extra_roll` | bool | Moneda: B tiene que volver a llamar a `roll()` ya. |
 | `won` | bool | Este salto ha ganado. B cierra la partida. |
+| `next_player` | str | A quién le toca después. Es el jugador actual mientras el turno siga abierto (quedan pasos o `extra_roll`). |
+| `skipped` | list[str] | Jugadores saltados por naufragio al pasar el turno. Vacía si el turno sigue. |
+
+`StatusView` (resultado de `status()`, para `Game_status`):
+
+| Campo | Tipo | Qué significa |
+|---|---|---|
+| `current_player` | str | `Player_N` al que le toca. |
+| `diamond_found` | bool | El diamante ya ha salido. |
+| `carrier` | str o None | Quién lo lleva. |
+| `phase` | str | `playing` o `finished`. |
+| `winner` | str o None | Quién ha ganado, si ha acabado. |
+| `movements` | int | Última tirada del turno actual. 0 si aún no se ha tirado. |
+| `remaining` | int | Pasos que quedan de esa tirada. |
+
+`PlayerView` (resultado de `player_state(id)`, para `Players/Player_N`):
+
+| Campo | Tipo | Qué significa |
+|---|---|---|
+| `id` | str | `Player_N`. |
+| `home` | str | `A1` o `C4`, la casa de salida. |
+| `cell` | str | Casilla oficial. |
+| `has_diamond` | bool | Lleva el diamante. |
+| `has_horseshoe` | bool | Tiene el derecho de la herradura. |
+| `skip` | bool | Perderá su próximo turno por naufragio. |
+
+`turn` (1 o 0) no está en `PlayerView`: B lo calcula como
+`current_player == id`. `current_mac` tampoco: B lo conoce por la tabla
+MAC ↔ `Player_N`.
 
 Códigos de `token` (no se inventan otros): `diamond`, `pirate`,
 `pirate_off`, `horseshoe`, `horseshoe_off`, `coin`, `coin_off`,
@@ -198,15 +293,16 @@ Hablar **antes** de tocar nada de esta lista. Un commit por su lado no basta.
 4. **`extra_roll`.** A pone el flag. B llama a `roll()` otra vez, sin
    botón. Si A prefiere que `roll()` se llame solo y el flag no exista,
    se habla y se cambia el contrato.
-5. **Naufragio / `skip`.** A lo aplica dentro de `roll()`: si toca y tiene
-   skip, no tira y pasa. B tiene que publicar el nuevo `current_player` /
-   `current_mac` cuando el jugador activo cambia, también en ese caso.
-   Avisarse la primera vez que un test de naufragio pase.
+5. **Naufragio / `skip`.** Decidido: `roll()` nunca devuelve 0. Quien tiene
+   naufragio pendiente se salta solo al pasar el turno, y aparece en
+   `skipped` (de `StepOutcome` o de `RollOutcome`). B publica el aviso de
+   cada uno y el nuevo `current_player` / `current_mac`. Avisarse la primera
+   vez que un test de naufragio pase.
 6. **Cuándo enchufar el `Game` de verdad.** A avisa cuando `test_game.py`
    esté verde. Ese día B quita el `Game` falso. No se mezcla a medias.
-7. **Sorteo y dado fijos en tests.** Si A añade `new_game(..., tokens=...)`
-   o `roll(forced=2)`, B usa la misma firma (o ignora los extras). No
-   tener dos `new_game` distintos.
+7. **Sorteo y dado fijos en tests.** Decidido: `Game(rng=...)`,
+   `new_game(seats, tokens=..., first_player=...)` y `roll(forced=...)`.
+   Un solo `new_game` y un solo `roll`. B los usa sin extras en producción.
 8. **Casilla ocupada.** A rechaza el salto si no es casa y hay alguien.
    Decir qué `reason` usa (`ocupada`) para que B lo muestre.
 9. **Confirmaciones de Arduino.** La base publicará “pantalla ok / error”
@@ -220,7 +316,8 @@ Hablar **antes** de tocar nada de esta lista. Un commit por su lado no basta.
 Con Arduino (las dos, sobre todo B) hay que decirles, cuando el contrato
 esté estable:
 
-- Publicamos `current_mac` para el LED verde.
+- Publicamos `current_mac` (en `Game_status`) y `turn` (en
+  `Players/Player_N`) para el LED verde. Ellos eligen cuál leer.
 - Publicamos `token` al revelar, no un texto libre.
 - El botón solo avisa; el dado lo tira el PC.
 - El meeple publica el UID **solo cuando cambia**.
