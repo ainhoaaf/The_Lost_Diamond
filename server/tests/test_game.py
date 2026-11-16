@@ -1,9 +1,9 @@
-"""Pruebas del motor, sin red.
+"""Game engine tests, no network.
 
-Cada test fija el sorteo (`tokens=`), quién abre (`first_player=`) y las
-tiradas (`roll(forced=)`) para no depender del azar.
+Every test fixes the deal (`tokens=`), who opens (`first_player=`) and the
+die (`roll(forced=)`) so nothing depends on randomness.
 
-Orden de turno en todos los tests: Player_1 (A1), Player_2 (C4),
+Turn order in every test: Player_1 (A1), Player_2 (C4),
 Player_3 (A1), Player_4 (C4).
 
     python3 -m unittest tests.test_game
@@ -20,6 +20,7 @@ from lost_diamond.engine.tokens import POOL, playable_cells
 
 P1, P2, P3, P4 = "Player_1", "Player_2", "Player_3", "Player_4"
 
+# Cells next to the homes get the leftover blanks first, so tokens a test does not fix cannot get in its way.
 _FILL_ORDER = ("A2", "A4", "C2", "C3", "A5", "C1", "A3", "B3", "B1", "B2", "E1", "E2", "D1", "D2")
 
 
@@ -28,11 +29,11 @@ def _seats() -> dict[str, str]:
 
 
 def _layout(**fixed: str) -> dict[str, str]:
-    """Sorteo completo con las fichas de `fixed` en su sitio y el resto repartido."""
+    """Full deal with the `fixed` tokens in place and the rest distributed."""
     left = Counter(POOL)
     left.subtract(fixed.values())
     if any(n < 0 for n in left.values()):
-        raise ValueError("más fichas de las que hay en POOL")
+        raise ValueError("more tokens than POOL contains")
     kinds = sorted(left.elements(), key=lambda k: (k != "blank", k))
     free = [c for c in _FILL_ORDER if c not in fixed]
     layout = dict(fixed)
@@ -42,7 +43,11 @@ def _layout(**fixed: str) -> dict[str, str]:
 
 
 def _game(**fixed: str) -> Game:
-    """Partida con las fichas de `fixed` y todo lo demás en blanco."""
+    """Game with the `fixed` tokens and every other cell blank.
+
+    `_layout` validates a complete deal first; tokens the test did not ask
+    for are then blanked so they cannot interfere.
+    """
     game = Game(rng=random.Random(0))
     game.new_game(_seats(), tokens=_layout(**fixed), first_player=P1)
     for cell, tile in game._tiles.items():  # noqa: SLF001
@@ -52,12 +57,12 @@ def _game(**fixed: str) -> Game:
 
 
 def _place(game: Game, player: str, cell: str) -> None:
-    """Atajo de test: coloca un meeple sin jugar los turnos intermedios."""
+    """Test shortcut: place a meeple without playing the turns in between."""
     game._players[player].cell = cell  # noqa: SLF001
 
 
 def _move(game: Game, die: int, *cells: str):
-    """Tira `die` para el jugador activo y hace los saltos. Devuelve el último StepOutcome."""
+    """Roll `die` for the active player and make the hops. Returns the last StepOutcome."""
     game.roll(forced=die)
     outcome = None
     for cell in cells:
