@@ -346,11 +346,18 @@ class Game:
         )
 
     def _land(self, player: _Player) -> StepOutcome:
-        """Budget reached 0: reveal, apply the token and pass the turn."""
+        """Budget reached 0: reveal, apply the token, check victory, pass the turn."""
         token, extra_roll = self._apply_token(player)
-        skipped = [] if extra_roll else self._pass_turn()
-        return StepOutcome(True, "", player.cell, 0, token, extra_roll, False, self.current_player(), skipped)
+        won = player.cell in HOMES and (player.has_diamond or player.has_horseshoe)
 
+        skipped: list[str] = []
+        if won:
+            self._winner = player.id
+        elif not extra_roll:
+            skipped = self._pass_turn()
+
+        return StepOutcome(True, "", player.cell, 0, token, extra_roll, won, self.current_player(), skipped)
+    
     def _apply_token(self, player: _Player) -> tuple[str, bool]:
         """Return (code, extra_roll). May move the player (pirate)."""
         if player.cell in HOMES:

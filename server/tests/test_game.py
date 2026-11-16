@@ -342,5 +342,72 @@ class ShipwreckTest(unittest.TestCase):
         self.assertFalse(game.player_state(P1).skip)
         self.assertEqual(game.player_state(P1).cell, "A2")
 
+class VictoryTest(unittest.TestCase):
+    def test_diamond_carrier_wins_on_either_home(self) -> None:
+        # On their own home.
+        game = _game(C2="diamond")
+        _move(game, 1, "A2")
+        _move(game, 1, "C2")  # P2 takes the diamond
+        _move(game, 1, "A4")
+        _move(game, 1, "C3")
+        _move(game, 1, "A5")
+        outcome = _move(game, 1, "C4")  # P2
+        self.assertTrue(outcome.won)
+        self.assertEqual(game.winner(), P2)
+        with self.assertRaises(GameError):
+            game.roll()
+
+        # On the opposite home.
+        game = _game(A2="diamond")
+        _place(game, P1, "B3")
+        _place(game, P2, "A5")
+        _move(game, 1, "B2")  # P1
+        self.assertEqual(_move(game, 1, "A2").token, "diamond")  # P2
+        _move(game, 1, "A4")  # P3
+        _move(game, 1, "C2")  # P4
+        _move(game, 1, "B3")  # P1
+        outcome = _move(game, 1, "A1")  # P2 reaches A1 with the diamond
+        self.assertTrue(outcome.won)
+        self.assertEqual(game.winner(), P2)
+
+    def test_crossing_home_does_not_win(self) -> None:
+        game = _game(C2="diamond")
+        _move(game, 1, "A2")
+        _move(game, 1, "C2")  # P2 diamond
+        _move(game, 1, "A4")
+        _move(game, 2, "C3", "C1")  # P4
+        _move(game, 1, "A5")
+        outcome = _move(game, 2, "C4", "C3")  # P2 crosses C4 and ends on C3
+        self.assertFalse(outcome.won)
+        self.assertIsNone(game.winner())
+
+    def test_horseshoe_wins_if_home_before_the_carrier(self) -> None:
+        game = _game(C2="diamond", A2="horseshoe")
+        _move(game, 1, "A4")  # P1
+        _move(game, 1, "C2")  # P2 diamond
+        self.assertEqual(_move(game, 1, "A2").token, "horseshoe")  # P3
+        _move(game, 1, "C3")  # P4
+        _move(game, 1, "A5")  # P1
+        _move(game, 2, "B3")  # P2 takes the bridge away from home
+        outcome = _move(game, 1, "A1")  # P3 arrives with the horseshoe
+        self.assertTrue(outcome.won)
+        self.assertEqual(game.winner(), P3)
+
+    def test_pirate_return_home_never_wins(self) -> None:
+        game = _game(A2="pirate")
+        outcome = _move(game, 1, "A2")
+        self.assertEqual(outcome.cell, "A1")
+        self.assertFalse(outcome.won)
+
+    def test_finished_phase_and_winner(self) -> None:
+        game = _game(A2="diamond")
+        _move(game, 1, "A2")
+        _move(game, 1, "C2")
+        _move(game, 1, "A4")
+        _move(game, 1, "C3")
+        _move(game, 1, "A1")  # P1 returns home with the diamond
+        st = game.status()
+        self.assertEqual((st.phase, st.winner, st.carrier), ("finished", P1, P1))
+        
 if __name__ == "__main__":
     unittest.main()
