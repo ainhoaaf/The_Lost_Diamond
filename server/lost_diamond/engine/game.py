@@ -301,13 +301,19 @@ class Game:
         self._start = None
         self._rolling = False
     
-
-
     def _pass_turn(self) -> list[str]:
-        """Advance to the next player."""
+        """Advance to the next player, skipping (and reporting) pending shipwrecks."""
         self._end_roll()
+        skipped: list[str] = []
         self._turn = (self._turn + 1) % len(self._order)
-        return []
+        # Each iteration clears one skip flag, so this ends in at most 4 iterations.
+        while self._players[self.current_player()].skip:
+            player = self._players[self.current_player()]
+            player.skip = False
+            skipped.append(player.id)
+            self._turn = (self._turn + 1) % len(self._order)
+        return skipped
+
 
     def _reject(self, player: _Player, reason: str) -> StepOutcome:
         return StepOutcome(False, reason, player.cell, self.remaining(), None, False, False, player.id)

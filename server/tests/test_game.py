@@ -328,5 +328,19 @@ class TokenTest(unittest.TestCase):
         game3.roll(forced=1)  # P1
         self.assertEqual(game3.step("A4").token, "horseshoe_off")
 
+class ShipwreckTest(unittest.TestCase):
+    def test_shipwreck_skips_the_next_turn(self) -> None:
+        game = _game(A2="shipwreck")
+        self.assertEqual(_move(game, 1, "A2").token, "shipwreck")
+        self.assertTrue(game.player_state(P1).skip)
+        _move(game, 1, "C2")  # P2
+        _move(game, 1, "A4")  # P3
+        outcome = _move(game, 1, "C3")  # P4 ends: P1 is skipped automatically
+        self.assertEqual(outcome.skipped, [P1])
+        self.assertEqual(outcome.next_player, P2)
+        self.assertEqual(game.current_player(), P2)
+        self.assertFalse(game.player_state(P1).skip)
+        self.assertEqual(game.player_state(P1).cell, "A2")
+
 if __name__ == "__main__":
     unittest.main()
