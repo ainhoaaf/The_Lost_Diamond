@@ -202,19 +202,67 @@ class Game:
 
         `forced` (tests only) fixes the value.
         """
-        raise NotImplementedError
+        self._require_started()
+        if self._winner is not None:
+            raise GameError("the game is already finished")
+        if self._rolling:
+            raise GameError("a roll is already open")
+        if forced is not None and forced not in DIE_FACES:
+            raise ValueError(f"the die is 1, 2 or 3: {forced}")
+
+        value = forced if forced is not None else self.rng.choice(DIE_FACES)
+        player = self._players[self.current_player()]
+        self._movements = value
+        self._remaining = value
+        self._start = player.cell
+        self._rolling = True
+
+        if not self._can_finish(player.cell, value, player.id):
+            skipped = self._pass_turn()
+            return RollOutcome(player.id, value, True, self.current_player(), skipped)
+        return RollOutcome(player.id, value, False, player.id, [])
 
     def remaining(self) -> int:
         """Steps left for the active player in this roll."""
-        raise NotImplementedError
+        return self._remaining if self._rolling else 0
 
     def legal_next(self) -> list[str]:
-        """Cells one hop away whose cost fits the remaining budget."""
-        raise NotImplementedError
+        """Cells one hop away whose cost fits the remaining budget.
+
+        Excludes the roll's starting cell, occupied cells and dead ends.
+        """
+        if not self._rolling:
+            return []
+        player = self._players[self.current_player()]
+        return sorted(
+            dest
+            for dest, cost in hops_from(player.cell).items()
+            if self._hop_reason(player.id, dest, cost, self._remaining) is None
+        )
 
     def step(self, cell: str) -> StepOutcome:
         """Apply one hop. If illegal, `ok` is False and no steps are spent."""
-        raise NotImplementedError
+        self._require_started()
+        player = self._players[self.current_player()]
+
+        if not self._rolling:
+            return self._reject(player, REASON_NO_ROLL)
+        if cell not in _ALL_CELLS:
+            return self._reject(player, REASON_ILLEGAL)
+
+        cost = hops_from(player.cell).get(cell)
+        reason = self._hop_reason(player.id, cell, cost, self._remaining)
+        if reason is not None:
+            return self._reject(player, reason)
+
+        assert cost is not None
+        player.cell = cell
+        self._remaining -= cost
+        if self._remaining > 0:
+            return StepOutcome(True, "", cell, self._remaining, None, False, False, player.id)
+
+        self._rolling = False
+        return self._land(player)
 
     def winner(self) -> str | None:
         """Player_N if someone has won, otherwise None."""
@@ -252,6 +300,88 @@ class Game:
         self._remaining = 0
         self._start = None
         self._rolling = False
+    
+
+
+    def _pass_turn(self) -> list[str]:
+        """Advance to the next player."""
+        self._end_roll()
+        self._turn = (self._turn + 1) % len(self._order)
+        return []
+
+    def _reject(self, player: _Player, reason: str) -> StepOutcome:
+        return StepOutcome(False, reason, player.cell, self.remaining(), None, False, False, player.id)
+
+    def _occupied_by_other(self, cell: str, player_id: str) -> bool:
+        if cell in HOMES:
+            return False
+        return any(p.cell == cell for p in self._players.values() if p.id != player_id)
+
+    def _hop_reason(self, player_id: str, dest: str, cost: int | None, budget: int) -> str | None:
+        """None if the hop is legal, otherwise its `reason` code."""
+        if cost is None or cost > budget or dest == self._start:
+            return REASON_ILLEGAL
+        if self._occupied_by_other(dest, player_id):
+            return REASON_OCCUPIED
+        if not self._can_finish(dest, budget - cost, player_id):
+            return REASON_ILLEGAL
+        return None
+
+    def _can_finish(self, cell: str, budget: int, player_id: str) -> bool:
+        """Can exactly `budget` steps be spent from `cell`? (DFS, depth <= 3)"""
+        if budget == 0:
+            return True
+        return any(
+            cost <= budget
+            and dest != self._start
+            and not self._occupied_by_other(dest, player_id)
+            and self._can_finish(dest, budget - cost, player_id)
+            for dest, cost in hops_from(cell).items()
+        )
+
+    def _land(self, player: _Player) -> StepOutcome:
+        """Budget reached 0: reveal, apply the token and pass the turn."""
+        token, extra_roll = self._apply_token(player)
+        skipped = [] if extra_roll else self._pass_turn()
+        return StepOutcome(True, "", player.cell, 0, token, extra_roll, False, self.current_player(), skipped)
+
+    def _apply_token(self, player: _Player) -> tuple[str, bool]:
+        """Return (code, extra_roll). May move the player (pirate)."""
+        if player.cell in HOMES:
+            return "blank", False
+
+        tile = self._tiles[player.cell]
+
+        if tile.kind == "diamond":
+            player.has_diamond = True
+            self._diamond_found = True
+            tile.kind = "blank"
+            return "diamond", False
+
+        if tile.kind == "pirate":
+            if self._diamond_found:
+                return "pirate_off", False
+            player.cell = player.home
+            return "pirate", False
+
+        if tile.kind == "horseshoe":
+            valid = not tile.spent and self._diamond_found and not player.has_diamond
+            tile.spent = True
+            if valid:
+                player.has_horseshoe = True
+                return "horseshoe", False
+            return "horseshoe_off", False
+
+        if tile.kind == "coin":
+            code = reveal_code("coin", diamond_found=self._diamond_found, spent=tile.spent)
+            tile.spent = True
+            return code, code == "coin"
+
+        if tile.kind == "shipwreck":
+            player.skip = True
+            return "shipwreck", False
+
+        return "blank", False
 
 
 _ALL_CELLS = frozenset(all_cells())
