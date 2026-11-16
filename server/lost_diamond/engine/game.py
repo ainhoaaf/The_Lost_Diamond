@@ -33,7 +33,24 @@ El aviso de 15 segundos no vive aquí: lo cuenta el adaptador y no cancela el tu
 from __future__ import annotations
 
 import random
+from collections import Counter
 from dataclasses import dataclass, field
+
+from lost_diamond.engine.board import HOMES, all_cells, hops_from
+from lost_diamond.engine.tokens import POOL, playable_cells, reveal_code
+
+DIE_FACES = (1, 2, 3)
+
+REASON_ILLEGAL = "destino_ilegal"
+REASON_OCCUPIED = "ocupada"
+REASON_NO_ROLL = "sin_tirada"
+
+PHASE_PLAYING = "playing"
+PHASE_FINISHED = "finished"
+
+
+class GameError(RuntimeError):
+    """Llamada fuera de orden: `roll` con tirada abierta, partida acabada..."""
 
 
 @dataclass
@@ -78,11 +95,36 @@ class PlayerView:
     has_horseshoe: bool
     skip: bool
 
+@dataclass
+class _Player:
+    id: str
+    home: str
+    cell: str
+    has_diamond: bool = False
+    has_horseshoe: bool = False
+    skip: bool = False
+
+
+@dataclass
+class _Tile:
+    kind: str
+    spent: bool = False
 
 class Game:
     def __init__(self, rng: random.Random | None = None) -> None:
         """`rng` fija sorteo y dado en los tests. Sin él, usa el azar normal."""
         self.rng = rng or random.Random()
+        self._players: dict[str, _Player] = {}
+        self._order: list[str] = []
+        self._turn = 0
+        self._tiles: dict[str, _Tile] = {}
+        self._diamond_found = False
+        self._winner: str | None = None
+        # Tirada actual.
+        self._movements = 0
+        self._remaining = 0
+        self._start: str | None = None
+        self._rolling = False
 
     def new_game(
         self,
@@ -98,11 +140,46 @@ class Game:
         `first_player` (solo tests) fija quién empieza. Sin él, empieza un
         jugador de una casa elegida al azar.
         """
-        raise NotImplementedError
+        if set(seats.values()) - set(HOMES):
+            raise ValueError("las casas son A1 y C4")
+        by_home = {h: sorted(p for p, home in seats.items() if home == h) for h in HOMES}
+        if any(len(players) != 2 for players in by_home.values()):
+            raise ValueError("tiene que haber dos jugadores en A1 y dos en C4")
+
+        if first_player is None:
+            first_player = by_home[self.rng.choice(HOMES)][0]
+        if first_player not in seats:
+            raise ValueError(f"first_player no está sentado: {first_player}")
+
+        # Turno: casa del primero, la otra casa, casa del primero, la otra casa.
+        first_home = seats[first_player]
+        other_home = HOMES[1] if first_home == HOMES[0] else HOMES[0]
+        mate = next(p for p in by_home[first_home] if p != first_player)
+        self._order = [first_player, by_home[other_home][0], mate, by_home[other_home][1]]
+        self._turn = 0
+
+        self._players = {p: _Player(id=p, home=h, cell=h) for p, h in seats.items()}
+        self._tiles = self._deal(tokens)
+        self._diamond_found = False
+        self._winner = None
+        self._end_roll()
+
+    def _deal(self, tokens: dict[str, str] | None) -> dict[str, _Tile]:
+        cells = playable_cells()
+        if tokens is None:
+            kinds = list(POOL)
+            self.rng.shuffle(kinds)
+            return {cell: _Tile(kind) for cell, kind in zip(cells, kinds)}
+        if set(tokens) != set(cells):
+            raise ValueError("tokens tiene que cubrir las 14 casillas que no son casa")
+        if Counter(tokens.values()) != Counter(POOL):
+            raise ValueError("tokens no respeta el reparto de POOL")
+        return {cell: _Tile(tokens[cell]) for cell in cells}
 
     def current_player(self) -> str:
         """Player_N al que le toca."""
-        raise NotImplementedError
+        self._require_started()
+        return self._order[self._turn]
 
     def roll(self, *, forced: int | None = None) -> RollOutcome:
         """Dado de 1 a 3 para el jugador activo. Guarda los pasos que quedan.
@@ -128,12 +205,36 @@ class Game:
 
     def winner(self) -> str | None:
         """Player_N si alguien ha ganado, si no None."""
-        raise NotImplementedError
-
+        return self._winner
     def status(self) -> StatusView:
         """Estado de la partida, para publicar `Game_status`."""
-        raise NotImplementedError
+        self._require_started()
+        carrier = next((p.id for p in self._players.values() if p.has_diamond), None)
+        return StatusView(
+            current_player=self.current_player(),
+            diamond_found=self._diamond_found,
+            carrier=carrier,
+            phase=PHASE_FINISHED if self._winner else PHASE_PLAYING,
+            winner=self._winner,
+            movements=self._movements,
+            remaining=self.remaining(),
+        )
 
     def player_state(self, player_id: str) -> PlayerView:
         """Estado de un jugador, para publicar `Players/Player_N`."""
-        raise NotImplementedError
+        p = self._players[player_id]
+        return PlayerView(p.id, p.home, p.cell, p.has_diamond, p.has_horseshoe, p.skip)
+
+    # --------------------------------------------------------------- interno
+
+    def _require_started(self) -> None:
+        if not self._order:
+            raise GameError("falta llamar a new_game")
+
+    def _end_roll(self) -> None:
+        self._movements = 0
+        self._remaining = 0
+        self._start = None
+        self._rolling = False
+
+_ALL_CELLS = frozenset(all_cells())
