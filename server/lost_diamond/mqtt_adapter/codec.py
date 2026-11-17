@@ -1,8 +1,8 @@
-"""JSON de cada mensaje MQTT.
+"""JSON body of every MQTT message.
 
-Aquí se construyen y se leen los cuerpos de `protocol/examples/`. El adaptador
-no arma diccionarios a mano: llama a estas funciones. El motor no importa este
-archivo.
+The bodies in `protocol/examples/` are built here. The adapter never builds
+dictionaries by hand: it calls these functions. The engine does not import
+this file.
 """
 
 from __future__ import annotations

@@ -1,7 +1,8 @@
-"""Nombres de los topics de docs/mqtt.md.
+"""Topic names from docs/mqtt.md.
 
-La MAC solo aparece en `lobby/` y, ya asignada, en el campo `current_mac`
-de `Game_status`. El jugador de la partida es `Player_1` … `Player_4`.
+The MAC only shows up under `lobby/` and, once assigned, in the
+`current_mac` field of `Game_status`. In the game a player is `Player_1` …
+`Player_4`.
 """
 
 PREFIX = "lostdiamond"

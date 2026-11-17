@@ -1,7 +1,7 @@
-"""Traduce el UID de un tag a la casilla del juego.
+"""Translates a tag UID into the game cell.
 
-El meeple real publica el UID. El gemelo puede publicar ya la casilla.
-`normalize` quita espacios y pone el UID en mayúsculas, como en
+The real meeple publishes the UID. The twin may publish the cell directly.
+`normalize` strips spaces and uppercases the UID, as in
 `nfc_map.example.json`.
 """
 

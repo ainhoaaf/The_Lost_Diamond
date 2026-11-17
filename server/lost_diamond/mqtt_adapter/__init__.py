@@ -1,4 +1,4 @@
-"""Traduce mensajes MQTT a llamadas del motor, y el estado a mensajes.
+"""Turns MQTT messages into engine calls, and the engine state into messages.
 
-`topics` son los nombres. `codec` arma el JSON. `adapter` habla con el broker.
+`topics` holds the names. `codec` builds the JSON. `adapter` talks to the broker.
 """

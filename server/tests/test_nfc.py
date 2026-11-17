@@ -1,7 +1,7 @@
-"""Pruebas del mapa UID → casilla.
+"""Tests for the UID → cell map.
 
-Los 16 tags de docs/hardware/uids_tablero.md tienen que resolver al nombre
-nuevo del tablero (A1…A5, B1…B3, E, D, C).
+The 16 tags in docs/hardware/uids_tablero.md must resolve to the board's
+cell names (A1…A5, B1…B3, E, D, C).
 """
 
 from __future__ import annotations
