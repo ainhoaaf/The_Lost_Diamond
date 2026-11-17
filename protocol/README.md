@@ -19,4 +19,4 @@ En `move.json` el campo `cell` lo rellena el gemelo. La placa rellena `uid` y de
 
 `Game_status` lleva `current_mac` (el meeple compara esa MAC con la suya), `remaining` y, al revelar, `token`.
 
-`buzzer.json` usa uno de estos patrones: `dice`, `diamond`, `tick`, `horseshoe`, `silence`.
+`buzzer.json` usa uno de estos patrones: `dice`, `hurry`, `diamond`, `horseshoe`. `display.json` lleva en `line2` el texto que publica el controlador, en inglés (`Roll: 3`, `Token: blank. Next: Player_2`, …). La lista está en `docs/mqtt.md`.
