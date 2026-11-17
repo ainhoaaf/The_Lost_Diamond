@@ -4,7 +4,7 @@ They simulate the boards against the same broker. Mosquitto and the controller (
 
 - `meeple.py`: joins with a MAC, compares `current_mac`, publishes a cell or a UID when you type it, and prints its own cell when the controller moves it.
 - `station.py`: Enter is the button. The terminal prints the screen and the buzzer.
-- `play.py`: opens the four meeples and the station, each in its own window.
+- `play.py`: opens the two meeples and the station, each in its own window.
 
 A single one:
 

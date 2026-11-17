@@ -21,7 +21,7 @@ from lost_diamond.mqtt_adapter import topics
 from lost_diamond.mqtt_adapter.adapter import SEATS, MqttAdapter, MqttPublisher
 
 
-MACS = tuple(f"AA:BB:CC:DD:EE:0{n}" for n in range(1, 5))
+MACS = tuple(f"AA:BB:CC:DD:EE:0{n}" for n in range(1, 3))
 B2_UID = "04356946C72A81"
 A2_UID = "0443E1AD872681"
 
@@ -209,7 +209,7 @@ class LobbyTest(unittest.TestCase):
         self.assertEqual([message["body"]["player_id"] for message in sent], ["Player_1", "Player_1"])
         self.assertEqual(self.game.calls, 0)
 
-    def test_fourth_join_starts_the_game_once(self) -> None:
+    def test_second_join_starts_the_game_once(self) -> None:
         for mac in MACS:
             self.adapter.on_message(topics.JOIN, _join(mac))
         self.adapter.on_message(topics.JOIN, _join("AA:BB:CC:DD:EE:05"))
@@ -224,7 +224,8 @@ class LobbyTest(unittest.TestCase):
             player: self.outbox.of(topics.player_state(player))[-1]["body"]["turn"]
             for player in SEATS
         }
-        self.assertEqual(turns, {"Player_1": 1, "Player_2": 0, "Player_3": 0, "Player_4": 0})
+        self.assertEqual(turns, {"Player_1": 1, "Player_2": 0})
+        self.assertEqual(status["body"]["num_players"], 2)
 
     def test_rejoining_board_can_reuse_its_event_ids(self) -> None:
         adapter, outbox = _seat(self.game)
@@ -526,14 +527,11 @@ class RealGameTest(unittest.TestCase):
         self.assertTrue(self.move("3", "Player_1", cell="A2")["ok"])
 
     def test_occupied_cell_is_reported(self) -> None:
+        self.game._players["Player_2"].cell = "A2"  # noqa: SLF001
         self.press(1)
-        self.move("2", "Player_1", cell="A2")
-        self.press(1)
-        self.move("2", "Player_2", cell="C3")
-        self.press(1)
-        answer = self.move("2", "Player_3", cell="A2")
+        answer = self.move("2", "Player_1", cell="A2")
         self.assertEqual(answer["reason"], "ocupada")
-        self.assertEqual(self.outbox.screen()[-1], "Player_3 | Cell taken")
+        self.assertEqual(self.outbox.screen()[-1], "Player_1 | Cell taken")
 
     def test_moving_before_the_roll_asks_for_the_button(self) -> None:
         answer = self.move("2", "Player_1", cell="A2")

@@ -1,4 +1,4 @@
-"""Opens the four meeples and the station, each in its own Terminal window.
+"""Opens the two meeples and the station, each in its own Terminal window.
 
 Each one can also be opened alone:
 
@@ -16,7 +16,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-MACS = tuple(f"AA:BB:CC:DD:EE:0{number}" for number in range(1, 5))
+MACS = tuple(f"AA:BB:CC:DD:EE:0{number}" for number in range(1, 3))
 
 
 def open_terminal(command: str) -> None:
@@ -42,7 +42,7 @@ def main() -> None:
         return
     for command in commands:
         open_terminal(command)
-    print("Five windows: four meeples and the station.")
+    print("Three windows: two meeples and the station.")
 
 
 if __name__ == "__main__":

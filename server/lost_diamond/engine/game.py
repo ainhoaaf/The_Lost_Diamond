@@ -156,19 +156,23 @@ class Game:
         if set(seats.values()) - set(HOMES):
             raise ValueError("homes are A1 and C4")
         by_home = {h: sorted(p for p, home in seats.items() if home == h) for h in HOMES}
-        if any(len(players) != 2 for players in by_home.values()):
-            raise ValueError("there must be two players on A1 and two on C4")
+        per_home = {len(players) for players in by_home.values()}
+        if per_home not in ({2}, {1}):
+            raise ValueError("seat one player per home, or two on A1 and two on C4")
 
         if first_player is None:
             first_player = by_home[self.rng.choice(HOMES)][0]
         if first_player not in seats:
             raise ValueError(f"first_player is not seated: {first_player}")
 
-        # Turn order alternates homes: first, other home, first's mate, other home.
+        # Turn order alternates homes. With four players each home has a mate.
         first_home = seats[first_player]
         other_home = HOMES[1] if first_home == HOMES[0] else HOMES[0]
-        mate = next(p for p in by_home[first_home] if p != first_player)
-        self._order = [first_player, by_home[other_home][0], mate, by_home[other_home][1]]
+        if per_home == {1}:
+            self._order = [first_player, by_home[other_home][0]]
+        else:
+            mate = next(p for p in by_home[first_home] if p != first_player)
+            self._order = [first_player, by_home[other_home][0], mate, by_home[other_home][1]]
         self._turn = 0
 
         self._players = {p: _Player(id=p, home=h, cell=h) for p, h in seats.items()}

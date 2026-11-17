@@ -5,9 +5,9 @@ boards and publishes what the screen, the LED and the buzzer must do. It
 never applies a rule itself: every decision comes from `Game`.
 
 - `clear_retained` wipes the retained state of the previous game.
-- `lobby/join` assigns Player_1 … Player_4 in MAC arrival order. The same
+- `lobby/join` assigns Player_1 and Player_2 in MAC arrival order. The same
   MAC gets the same player back.
-- On the fourth player it calls `Game.new_game` and publishes `Game_status`
+- On the second player it calls `Game.new_game` and publishes `Game_status`
   and `Players/Player_N`.
 - `Station/button` calls `Game.roll` and publishes the value. A press while
   a roll is still open only repeats how many steps are left. A blocked roll
@@ -34,8 +34,6 @@ from lost_diamond.nfc import cell_for, normalize
 SEATS = {
     "Player_1": "A1",
     "Player_2": "C4",
-    "Player_3": "A1",
-    "Player_4": "C4",
 }
 PLAYERS = tuple(SEATS)
 IDLE_MS = 15_000
@@ -91,7 +89,7 @@ class MqttAdapter:
         self._hurried = False
 
     def clear_retained(self) -> None:
-        """Clear Game_status, the four player states and, once known, the
+        """Clear Game_status, both player states and, once known, the
         lobby/status of their MACs."""
         targets = [topics.GAME_STATUS]
         targets.extend(topics.player_state(player) for player in PLAYERS)
@@ -159,6 +157,7 @@ class MqttAdapter:
                 remaining=status.remaining,
                 token=self._token,
                 phase="finished" if finished else status.phase,
+                num_players=len(PLAYERS),
             ),
             retain=True,
         )
