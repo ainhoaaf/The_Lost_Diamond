@@ -32,6 +32,84 @@ lostdiamond/
 
 `Players/Player_N` es la vista de ese jugador: casa, casilla, si le toca (`turn` 1 o 0), si lleva el diamante o el derecho de la herradura, y si pierde el próximo turno (`skip`).
 
+## Formato de cada mensaje
+
+Todos los cuerpos son JSON. El prefijo de los topics es `lostdiamond/`.
+
+`lobby/join`, el meeple avisa de que ha entrado. QoS 1, no retenido.
+
+```json
+{"event_id": "1", "player_id": "", "timestamp": 1710000000, "action": "join", "mac": "AA:BB:CC:DD:EE:01"}
+```
+
+`lobby/assign/{mac}`, el PC le da jugador, casa y token. QoS 1, no retenido. El `token` es `ld-Player_N`.
+
+```json
+{"event_id": "2", "player_id": "Player_1", "timestamp": 1710000001, "action": "assign", "home": "A1", "token": "ld-Player_1"}
+```
+
+`lobby/status/{mac}`, retenido. El meeple publica `online: true` al conectar. Si se cae, el broker entrega el Last Will `online: false`.
+
+```json
+{"mac": "AA:BB:CC:DD:EE:01", "online": true}
+```
+
+`Game_status`, retenido, QoS 1. Lo publica el PC. `num_players` es 4 en la partida normal y 2 en la rama `dos-jugadores`. `movements` es la última tirada (0 si nadie ha tirado). `remaining` son los pasos que quedan. `token` es `null` hasta que un movimiento gasta el último paso. `phase` pasa a `finished` cuando alguien gana.
+
+```json
+{"num_players": 4, "current_player": "Player_1", "current_mac": "AA:BB:CC:DD:EE:01", "diamond_found": false, "carrier": null, "phase": "playing", "movements": 1, "remaining": 1, "token": null}
+```
+
+`Players/Player_N`, retenido, QoS 1. `turn` es 1 solo en el jugador activo. `movements` repite la tirada de `Game_status`.
+
+```json
+{"id": "Player_1", "home": "A1", "cell": "A1", "turn": 1, "movements": 1, "has_diamond": false, "has_horseshoe": false, "skip": false}
+```
+
+`Players/Player_N/move`, el meeple. QoS 1, no retenido. La placa rellena `uid` y deja `cell` en `""`. El gemelo puede rellenar `cell` y dejar `uid` en `""`.
+
+```json
+{"event_id": "4", "player_id": "Player_1", "timestamp": 1710000004, "action": "move", "uid": "04356946C72A81", "cell": ""}
+```
+
+`Players/Player_N/result`, el PC, con el mismo `event_id`. `reason` va vacío cuando `ok` es verdadero. Si es falso, uno de: `destino_ilegal`, `ocupada`, `sin_tirada`, `no_es_tu_turno`, `uid_desconocido`.
+
+```json
+{"event_id": "4", "player_id": "Player_1", "timestamp": 1710000005, "action": "move_result", "ok": false, "reason": "destino_ilegal", "cell": "A1", "remaining": 1}
+```
+
+`Station/button`, la base. QoS 1, no retenido.
+
+```json
+{"event_id": "9", "player_id": "", "timestamp": 1710000009, "action": "button", "pressed": true}
+```
+
+`Station/display`, el PC. QoS 0, no retenido. `diamond` es verdadero cuando el diamante ya salió. `line2` sale en inglés, tal como lo publica el controlador:
+
+| `line2` | Cuándo |
+|---|---|
+| `Roll: 2` | el dado acaba de salir |
+| `Steps left: 2` | pulsan el botón con la tirada todavía abierta |
+| `Rolled 2, no moves. Next: Player_2` | no hay ninguna casilla legal |
+| `Illegal move` | la casilla no se puede alcanzar con los pasos que quedan |
+| `Cell taken` | hay otro meeple en esa casilla |
+| `Press the button` | mueven sin haber tirado |
+| `Unknown tag` | el UID no está en el mapa |
+| `Token: blank. Next: Player_2` | se acabaron los pasos |
+| `Token: coin. Roll again` | la moneda da otra tirada |
+| `Shipwreck. Next: Player_2` | a ese jugador se le salta el turno |
+| `Player_1 wins!` | alguien ha llegado a una casa con el diamante o la herradura |
+
+```json
+{"line1": "Player_1", "line2": "Roll: 2", "diamond": false}
+```
+
+`Station/buzzer`, el PC. QoS 0, no retenido. `pattern` es `dice`, `hurry`, `diamond` o `horseshoe`. `hurry` suena a los 15 segundos y no cierra el turno.
+
+```json
+{"pattern": "hurry"}
+```
+
 ## Turno
 
 1. El PC publica `Game_status` con la MAC a la que le toca.
